@@ -1,4 +1,4 @@
-# Version 1.03
+# Version 1.50
 # 10/10/2023
 # Visual Regression Software
 # Developed by Tyler MacLean
@@ -15,6 +15,9 @@ from pathlib import Path
 from selenium import webdriver
 import os
 import time
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import tkinter as tk
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
@@ -33,13 +36,13 @@ run_tab_layout = [
 ]
 
 view_tab_layout = [
-    [sg.Text('This is the View tab')],
-    # You can add elements specific to the "View" tab here.
+    [sg.Text('Complete a run and Compare Images to display Charts')],
+    [sg.Canvas(key='-canvas-')],  # Canvas for pie chart
 ]
-
+column1 = [[sg.Column(view_tab_layout, scrollable=True, vertical_scroll_only=True, size=(400,300))],]
 # Create the tab layout
 tab_layout = [
-    [sg.Tab('Run', run_tab_layout), sg.Tab('View', view_tab_layout)],
+    [sg.Tab('Run', run_tab_layout), sg.Tab('View', column1)],
 ]
 
 layout = [
@@ -51,6 +54,27 @@ driver = webdriver.Chrome()
 
 def update_progress_bar(key, value):
     window[key].update_bar(value)
+
+def create_pie_chart(percentage_diff, title):
+    # Create a pie chart
+    fig, ax = plt.subplots(figsize=(2, 2))
+    ax.pie([percentage_diff, 100 - percentage_diff], labels=["Difference", "Similarity"], autopct='%1.1f%%', startangle=90)
+    ax.axis('equal')  # Equal aspect ratio ensures the pie chart is circular
+
+    # Save the pie chart as an image
+    pie_chart_path = 'pie_chart.png'
+    plt.title(title)
+    plt.savefig(pie_chart_path, bbox_inches='tight')
+    plt.close()
+
+    # Display the pie chart on the canvas in the "View" tab
+    canvas_elem = window['-canvas-']
+    canvas = FigureCanvasTkAgg(fig, master=canvas_elem.Widget)
+    canvas_widget = canvas.get_tk_widget()
+    canvas_widget.pack(fill=tk.BOTH, expand=1)
+
+    return pie_chart_path
+
 
 def ss(url, driver: webdriver.Chrome, path: str = '/tmp/screenshot.png'):
     print("Starting chrome full page screenshot workaround ...")
@@ -241,6 +265,9 @@ while True:
                 if os.path.isfile(full_file_pathb) and os.path.isfile(full_file_patha):
                     percentage_diff = compare_images(full_file_pathb, full_file_patha, "Diff/Image " + str(n) + ".png")
                     print("Difference in Image " + str(n) + f": {percentage_diff:.2f}%")
+
+                    # Create and display a pie chart for the percentage difference
+                    pie_chart_path = create_pie_chart(percentage_diff, "Difference in Image " + str(n))
                     n = n + 1
 
 window.close()
