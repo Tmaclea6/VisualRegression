@@ -1,4 +1,4 @@
-# Version 1.01
+# Version 1.02
 # 10/05/2023
 # Visual Regression Software
 # Developed by Tyler MacLean
@@ -22,14 +22,28 @@ from selenium.webdriver.common.by import By
 a = r'Actual/'
 b = "Base/"
 
-
 sg.theme("DarkBlue")
 
-layout = [
+# Define the layout for the tab content
+run_tab_layout = [
     [sg.Text('Select a test file'), sg.InputText(key='-file1-'), sg.FileBrowse()],
     [sg.Button("Base")],
     [sg.Button("Actual")],
     [sg.Button("Compare")],
+]
+
+view_tab_layout = [
+    [sg.Text('This is the View tab')],
+    # You can add elements specific to the "View" tab here.
+]
+
+# Create the tab layout
+tab_layout = [
+    [sg.Tab('Run', run_tab_layout), sg.Tab('View', view_tab_layout)],
+]
+
+layout = [
+    [sg.TabGroup(tab_layout)],
 ]
 
 window = sg.Window('Visual Regression', layout)
