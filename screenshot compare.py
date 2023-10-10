@@ -1,5 +1,5 @@
-# Version 1.02
-# 10/05/2023
+# Version 1.03
+# 10/10/2023
 # Visual Regression Software
 # Developed by Tyler MacLean
 # Email: tyler.maclean@xplore.ca
@@ -27,8 +27,8 @@ sg.theme("DarkBlue")
 # Define the layout for the tab content
 run_tab_layout = [
     [sg.Text('Select a test file'), sg.InputText(key='-file1-'), sg.FileBrowse()],
-    [sg.Button("Base")],
-    [sg.Button("Actual")],
+    [sg.Button("Base"), sg.ProgressBar(100, orientation='h', size=(20, 20), key='-base-progress-')],
+    [sg.Button("Actual"), sg.ProgressBar(100, orientation='h', size=(20, 20), key='-actual-progress-')],
     [sg.Button("Compare")],
 ]
 
@@ -48,16 +48,10 @@ layout = [
 
 window = sg.Window('Visual Regression', layout)
 driver = webdriver.Chrome()
-def save_screenshot(url, driver: webdriver.Chrome, path: str = '/tmp/screenshot.png') -> None:
-    # Ref: https://stackoverflow.com/a/52572919/
-    driver.get(url)
-    original_size = driver.get_window_size()
-    required_width = driver.execute_script('return document.body.parentNode.scrollWidth')
-    required_height = driver.execute_script('return document.body.parentNode.scrollHeight')
-    driver.set_window_size(required_width, required_height)
-    driver.save_screenshot(path)  # has scrollbar
-    # driver.find_element("name", 'body').screenshot(path)  # avoids scrollbar
-    driver.set_window_size(original_size['width'], original_size['height'])
+
+def update_progress_bar(key, value):
+    window[key].update_bar(value)
+
 def ss(url, driver: webdriver.Chrome, path: str = '/tmp/screenshot.png'):
     print("Starting chrome full page screenshot workaround ...")
     driver.get(url)
@@ -162,7 +156,6 @@ def compare_images(image1_path, image2_path, output_path):
 
     return percentage_difference
 
-
 while True:
     event, values = window.read()
     if event == sg.WINDOW_CLOSED:
@@ -190,9 +183,11 @@ while True:
                         # Append the cleaned line to the list
                         lines.append(cleaned_line)
 
-                    for i in lines:
-                        ss(i, driver=driver, path=(b+"image " + str(n) + ".png"))
+                    total_lines = len(lines)
+                    for i, line in enumerate(lines, start=1):
+                        ss(line, driver=driver, path=(b+"image " + str(n) + ".png"))
                         n = n + 1
+                        update_progress_bar('-base-progress-', (i / total_lines) * 100)
 
                 break
     elif event == "Actual":
@@ -218,14 +213,14 @@ while True:
                         # Append the cleaned line to the list
                         lines.append(cleaned_line)
 
-                    for i in lines:
-                        ss(i, driver=driver, path=(a+"image " + str(n) + ".png"))
+                    total_lines = len(lines)
+                    for i, line in enumerate(lines, start=1):
+                        ss(line, driver=driver, path=(a+"image " + str(n) + ".png"))
                         n = n + 1
+                        update_progress_bar('-actual-progress-', (i / total_lines) * 100)
 
                 break
     elif event == "Compare":
-
-
         # Ensure the folder path exists
         if not os.path.exists(b):
             print(f"Folder not found: {b}")
@@ -249,15 +244,3 @@ while True:
                     n = n + 1
 
 window.close()
-
-
-
-
-# if __name__ == "__main__":
-#     image1_path = "Base/im1.png"  # Replace with your first image path
-#     image2_path = "Actual/im1.png"  # Replace with your second image path
-#     output_path = "Diff/output_image.jpg"  # Replace with the path for the output image
-#
-#     percentage_diff = compare_images(image1_path, image2_path, output_path)
-#     print(f"Percentage Difference: {percentage_diff:.2f}%")
-
