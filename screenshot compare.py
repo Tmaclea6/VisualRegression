@@ -1,4 +1,4 @@
-# Version 1.00
+# Version 1.01
 # 10/05/2023
 # Visual Regression Software
 # Developed by Tyler MacLean
