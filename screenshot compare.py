@@ -1,5 +1,5 @@
-# Version 1.50
-# 10/10/2023
+# Version 1.70
+# 12/19/2023
 # Visual Regression Software
 # Developed by Tyler MacLean
 # Email: tyler.maclean@xplore.ca
@@ -18,6 +18,8 @@ import time
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
+from difflib import SequenceMatcher
+import difflib
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
@@ -49,7 +51,7 @@ layout = [
     [sg.TabGroup(tab_layout)],
 ]
 
-window = sg.Window('Visual Regression', layout)
+window = sg.Window('Visual Regression', layout, icon=r'T.ico')
 driver = webdriver.Chrome()
 
 def update_progress_bar(key, value):
@@ -58,7 +60,7 @@ def update_progress_bar(key, value):
 def create_pie_chart(percentage_diff, title):
     # Create a pie chart
     fig, ax = plt.subplots(figsize=(2, 2))
-    ax.pie([percentage_diff, 100 - percentage_diff], labels=["Difference", "Similarity"], autopct='%1.1f%%', startangle=90)
+    ax.pie([percentage_diff, 100 - percentage_diff], labels=[" ", "Similarity"], autopct='%1.1f%%', startangle=90)
     ax.axis('equal')  # Equal aspect ratio ensures the pie chart is circular
 
     # Save the pie chart as an image
@@ -79,7 +81,15 @@ def create_pie_chart(percentage_diff, title):
 def ss(url, driver: webdriver.Chrome, path: str = '/tmp/screenshot.png'):
     print("Starting chrome full page screenshot workaround ...")
     driver.get(url)
+    time.sleep(10)
     file = path
+    with open('html/'+path+'HTMLoutput.txt', 'a') as f:
+        try:
+             f.write(driver.page_source)
+        except:
+            print("there was an error")
+
+
     total_width = driver.execute_script("return document.body.offsetWidth")
     total_height = driver.execute_script("return document.body.parentNode.scrollHeight")
     viewport_width = driver.execute_script("return document.body.clientWidth")
@@ -148,8 +158,15 @@ def compare_images(image1_path, image2_path, output_path):
     image2 = Image.open(image2_path)
 
     # Ensure both images have the same dimensions
-    if image1.size != image2.size:
-        raise ValueError("Both images must have the same dimensions.")
+    if image1.size > image2.size:
+        new_image = Image.new('RGB', image1.size, 'green')
+        new_image.paste(image2, (0, 0))
+        image2 = new_image
+
+    if image1.size < image2.size:
+        new_image = Image.new('RGB', image2.size, 'green')
+        new_image.paste(image1, (0, 0))
+        image1 = new_image
 
     # Convert images to numpy arrays for pixel-wise comparison
     np_image1 = np.array(image1)
@@ -260,6 +277,17 @@ while True:
                 # Create the full file path by joining the folder path and file name
                 full_file_pathb = os.path.join(b, file_name)
                 full_file_patha = os.path.join(a, file_name)
+                try:
+                    first_file_lines = Path('html/Actual/image ' + str(n) + '.pngHTMLoutput.txt').read_text().splitlines()
+                    second_file_lines = Path('html/Base/image ' + str(n) + '.pngHTMLoutput.txt').read_text().splitlines()
+                    html_diff = difflib.HtmlDiff().make_file(first_file_lines, second_file_lines)
+                    m = SequenceMatcher(None, first_file_lines, second_file_lines)
+
+                    print("Difference in HTML " + str(n) + f": {(1-m.ratio())*100:.2f}%")
+                    Path('html/Diff/diff' + str(n) + '.html').write_text(html_diff)
+
+                except:
+                    print("there was an uncaught error with the HTML compare")
 
                 # Check if the item is a file (not a subdirectory)
                 if os.path.isfile(full_file_pathb) and os.path.isfile(full_file_patha):
